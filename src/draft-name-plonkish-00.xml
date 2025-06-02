@@ -1,0 +1,231 @@
+<!--
+Title: Specification of the Plonkish Relation
+Abbrev: PlonkishSpec
+Docname: draft-name-plonkish-00
+Category: info
+IPR: trust200902
+Area: sec
+WG: zkproof
+Date: 2025-05-12
+
+Author: Firstname Lastname <email@example.com>
+        Organisation
+        https://example.com
+-->
+
+<section anchor="abstract"><name>Abstract</name>
+
+<t>An arithmetisation is a language that a proof system uses to express statements. A circuit is a program in this language. The associated computation has been computed correctly if and only if all of the constraints in the circuit are satisified.</t>
+
+<t>The primary purpose of this document is to specify a particular arithmetisation: the "Plonkish" arithmetisation used in the Halo 2 proving system.</t>
+
+</section>
+<section anchor="introduction"><name>Introduction</name>
+
+<t>This document describes the general Plonkish relation used in zero-knowledge proof systems. It is based on ideas in <xref target="Thomas22"/> and is intended to be read alongside implementation-focused material.</t>
+
+</section>
+<section anchor="dependencies-and-notation"><name>Dependencies and Notation</name>
+
+<t>Plonkish arithmetization depends on a scalar field over a prime modulus <spanx style="verb">p</spanx>. We represent this field as the object <spanx style="verb">Fp</spanx>. We denote the additive identity by <spanx style="verb">0</spanx> and the multiplicative identity by <spanx style="verb">1</spanx>. Integers, taken modulo the field modulus <spanx style="verb">p</spanx>, are called scalars; arithmetic operations on scalars are implicitly performed modulo <spanx style="verb">p</spanx>. We denote the sum, difference, and product of two scalars using the <spanx style="verb">+</spanx>, <spanx style="verb">-</spanx>, and <spanx style="verb">*</spanx> operators, respectively.</t>
+
+<t>The notation <spanx style="verb">a..b</spanx> means the sequence of integers from <spanx style="verb">a</spanx> (inclusive) to <spanx style="verb">b</spanx> (exclusive) in ascending order. <spanx style="verb">[a, b)</spanx> means the corresponding set of integers.</t>
+
+<t>The length of a sequence <spanx style="verb">S</spanx>, or the number of elements in a set <spanx style="verb">S</spanx>, is written <spanx style="verb">#S</spanx>.</t>
+
+<t><spanx style="verb">{ f(e) : e in S }</spanx> means the set of evaluations of <spanx style="verb">f</spanx> on the set <spanx style="verb">S</spanx>.</t>
+
+<t><spanx style="verb">[f(e) : e &lt;- a..b]</spanx> means the sequence of evaluations of <spanx style="verb">f</spanx> on <spanx style="verb">a..b</spanx>.</t>
+
+<t><spanx style="verb">[Aₑ]ₑ</spanx> means the sequence of <spanx style="verb">Aₑ</spanx> for some implicitly defined sequence of indices <spanx style="verb">e</spanx>.</t>
+
+<t>When <spanx style="verb">f</spanx> is a function that takes a tuple as argument, we will allow <spanx style="verb">f((i, j))</spanx> to be written as <spanx style="verb">f[i, j]</spanx>.</t>
+
+<t>The terminology used here is intended to be consistent with the ZKProof Community Reference <xref target="ZKProofCommunityReference"/>. We diverge from this terminology as follows:
+* We refer to the public inputs to the circuit as an "instance vector". The entries of this vector are called "instance variables" in the Community Reference.</t>
+
+</section>
+<section anchor="the-general-plonkish-relation-rplonkish"><name>The General Plonkish Relation <spanx style="verb">R_plonkish</spanx></name>
+
+<t>The general relation <spanx style="verb">R_plonkish</spanx> contains pairs of <spanx style="verb">(x, w)</spanx> where:
+* the instance <spanx style="verb">x</spanx> consists of the parameters of the proof system, the circuit <spanx style="verb">C</spanx>, and the public inputs to the circuit (i.e. the instance vector).
+* the witness <spanx style="verb">w</spanx> consists of the matrix of values provided by the prover. In this model it consists of the (potentially private) prover inputs to the circuit, and any intermediate values (including fixed values) that are not inputs to the circuit but are required in order to satisfy it.</t>
+
+<t>We say that a <spanx style="verb">x</spanx> is a <em>valid</em> instance whenever there exists some witness <spanx style="verb">w</spanx> such that <spanx style="verb">(x, w) in R_plonkish</spanx> holds.
+The Plonkish language <spanx style="verb">L_plonkish</spanx> contains all valid instances.</t>
+
+<t>A circuit-specific relation is a specialization of <spanx style="verb">R_plonkish</spanx> to a particular circuit.</t>
+
+<t>If the proof system is knowledge sound, then the prover must have knowledge of the witness in order to construct a valid proof. If it is also zero knowledge, then witness entries can be private, and an honestly generated proof leaks no information about the private inputs to the circuit beyond the fact that it was obtained with knowledge of some satisfying witness.</t>
+
+<section anchor="instances"><name>Instances</name>
+<t>The relation <spanx style="verb">R_plonkish</spanx> takes instances of the following form:
+| Instance element | Description                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| <spanx style="verb">Fp</spanx>               | A prime field.                                                                            |
+| <spanx style="verb">C</spanx>                | The circuit.                                                                              |
+| <spanx style="verb">phi</spanx>              | The instance vector <spanx style="verb">phi : Fp^(C.t)</spanx> (where <spanx style="verb">t</spanx> is the instance vector length defined below). |</t>
+
+<t>The circuit <spanx style="verb">C : AbstractCircuit_Fp</spanx> in turn has the following form:
+| Circuit element | Description                                                                                                        | Used in                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
+| <spanx style="verb">t</spanx>               | Length of the instance vector.                                                                                     |                                           |
+| <spanx style="verb">n &gt; 0</spanx>           | Number of rows for the witness matrix.                                                                             |                                           |
+| <spanx style="verb">m &gt; 0</spanx>           | Number of columns for the witness matrix.                                                                          |                                           |
+| <spanx style="verb">≡</spanx>           | An equivalence relation on <spanx style="verb">[0,m) x [0,n)</spanx>, indicating which witness entries are equal to each other.              | <xref target="copy-constraints">Copy constraints</xref>     |
+| <spanx style="verb">S</spanx>               | A set <spanx style="verb">S ⊆ ([0,m) x [0,n)) x [0,t)</spanx>, indicating which witness entries are equal to instance vector entries.       | <xref target="copy-constraints">Copy constraints</xref>     |
+| <spanx style="verb">m_f &lt;= m</spanx>       | Number of columns that are fixed.                                                                                  | <xref target="fixed-constraints">Fixed constraints</xref>   |
+| <spanx style="verb">f</spanx>               | The fixed content of the first <spanx style="verb">m_f</spanx> columns, <spanx style="verb">f : Fp^(m_f x n)</spanx>.                                                    | <xref target="fixed-constraints">Fixed constraints</xref>   |
+| <spanx style="verb">p_u</spanx>            | Custom multivariate polynomials <spanx style="verb">p_u : Fp^m -&gt; Fp</spanx>.                                                                 | <xref target="custom-constraints">Custom constraints</xref> |
+| <spanx style="verb">CUS_u</spanx>          | Sets <spanx style="verb">CUS_u ⊆ [0,n)</spanx>, indicating rows on which the custom polynomials <spanx style="verb">p_u</spanx> are constrained to evaluate to <spanx style="verb">0</spanx>.       | <xref target="custom-constraints">Custom constraints</xref> |
+| <spanx style="verb">L_v</spanx>            | Number of table columns in the lookup table with index <spanx style="verb">v, TAB_v</spanx>.                                                  | <xref target="lookup-constraints">Lookup constraints</xref> |
+| <spanx style="verb">TAB_v</spanx>          | Lookup tables <spanx style="verb">TAB_v ⊆ Fp^{L_v}</spanx>, each with a number of tuples in <spanx style="verb">Fp^{L_v}</spanx>.                                           | <xref target="lookup-constraints">Lookup constraints</xref> |
+| <spanx style="verb">q_{v,s}</spanx>        | Scaling multivariate polynomials <spanx style="verb">q_{v,s} : Fp^m -&gt; Fp</spanx> for <spanx style="verb">s in 0..L_v</spanx>.                                           | <xref target="lookup-constraints">Lookup constraints</xref> |
+| <spanx style="verb">LOOK_v</spanx>         | Sets <spanx style="verb">LOOK_v ⊆ [0,n)</spanx>, indicating rows on which the scaling polynomials <spanx style="verb">q_{v,s}</spanx> evaluate to some tuple in <spanx style="verb">TAB_v</spanx>. | <xref target="lookup-constraints">Lookup constraints</xref> |</t>
+
+</section>
+<section anchor="witnesses"><name>Witnesses</name>
+
+<t>The relation <spanx style="verb">R_plonkish</spanx> takes witnesses of the following form:</t>
+
+<texttable>
+      <ttcol align='left'>Witness element</ttcol>
+      <ttcol align='left'>Description</ttcol>
+      <c><spanx style="verb">w</spanx></c>
+      <c>The witness matrix <spanx style="verb">w : Fp^(m x n)</spanx>.</c>
+</texttable>
+
+<t>Define <spanx style="verb">w_j</spanx> as the row vector <spanx style="verb">[ w[i, j] : i &lt;- 0..m ]</spanx>.</t>
+
+</section>
+<section anchor="definition-of-the-relation"><name>Definition of the relation</name>
+
+<t>Given the above definitions, the relation <spanx style="verb">R_plonkish</spanx> corresponds to a set of (instance, witness) pairs:</t>
+
+<t><list style="symbols">
+  <t><spanx style="verb">x</spanx>:
+  <list style="symbols">
+      <t><spanx style="verb">Fp</spanx></t>
+      <t><spanx style="verb">C</spanx>:
+      <list style="symbols">
+          <t><spanx style="verb">t</spanx>, <spanx style="verb">n</spanx>, <spanx style="verb">m</spanx>, <spanx style="verb">≡</spanx>, <spanx style="verb">S</spanx>, <spanx style="verb">m_f</spanx>, <spanx style="verb">f</spanx></t>
+          <t><spanx style="verb">[ (p_u, CUS_u) ]_u</spanx></t>
+          <t><spanx style="verb">[ (L_v, TAB_v, [q_{v,s}]_s, LOOK_v) ]_v</spanx></t>
+        </list></t>
+      <t><spanx style="verb">phi</spanx></t>
+    </list></t>
+  <t><spanx style="verb">w</spanx></t>
+</list></t>
+
+<t>such that:</t>
+
+<t>| Domains | Constraints |
+|----------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
+| <spanx style="verb">w : Fp^(m × n)</spanx>, <spanx style="verb">f : Fp^(m_f × n)</spanx>                                                        | <spanx style="verb">i in [0, m_f), j in [0, n) =&gt; w[i, j] = f[i, j]</spanx>|
+| <spanx style="verb">S ⊆ ([0, m) x [0, n)) x [0, t)</spanx>, <spanx style="verb">phi : Fp^t</spanx>                                              | <spanx style="verb">((i, j), k) in S =&gt; w[i, j] = phi[k]</spanx>|
+| <spanx style="verb">≡ ⊆ ([0, m) x [0, n)) x ([0, m) × [0, n))</spanx>                                            | <spanx style="verb">(i, j) ≡ (k, l) =&gt; w[i, j] = w[k, l]</spanx>|
+| <spanx style="verb">CUS_u ⊆ [0, n)</spanx>, <spanx style="verb">p_u : Fp^m -&gt; Fp</spanx>                                                        | <spanx style="verb">j in CUS_u =&gt; p_u(w_j) = 0</spanx>|
+| <spanx style="verb">LOOK_v ⊆ [0, n)</spanx>, <spanx style="verb">q_{v,s} : Fp^m -&gt; Fp</spanx>, <spanx style="verb">TAB_v ⊆ Fp^{L_v}</spanx>                              | <spanx style="verb">j in LOOK_v =&gt; [ q_{v,s}(w_j) : s &lt;- 0..L_v ] in TAB_v</spanx>|
+---</t>
+
+<t>In this model, a circuit-specific relation <spanx style="verb">R_{Fp, C}</spanx> for a field <spanx style="verb">Fp</spanx> and circuit <spanx style="verb">C</spanx> is the relation <spanx style="verb">R_plonkish</spanx> restricted to <spanx style="verb">( (Fp, C, phi : Fp^C.t), w : Fp^(C.m × C.n))</spanx></t>
+
+</section>
+<section anchor="conditions-satisfied-by-statements-in-rplonkish"><name>Conditions satisfied by statements in <spanx style="verb">R_plonkish</spanx></name>
+
+<t>There are four types of constraints that a Plonkish statement <spanx style="verb">(x, w) in R_plonkish</spanx> must satisfy:</t>
+
+<t><list style="symbols">
+  <t>Fixed constraints</t>
+  <t>Copy constraints</t>
+  <t>Custom constraints</t>
+  <t>Lookup constraints</t>
+</list></t>
+
+<section anchor="fixed-constraints"><name>Fixed constraints</name>
+
+<t>The first <spanx style="verb">m_f</spanx> columns of <spanx style="verb">w</spanx> are fixed to the columns of <spanx style="verb">f</spanx>.</t>
+
+</section>
+<section anchor="copy-constraints"><name>Copy constraints</name>
+
+<t>Copy constraints enforce that entries in the witness matrix are equal to each other, or that an instance entry is equal to a witness entry.</t>
+
+<texttable>
+      <ttcol align='left'>Copy Constraints</ttcol>
+      <ttcol align='left'>Description</ttcol>
+      <c><spanx style="verb">((i,j),k) in S =&gt; w[i, j] = phi[k]</spanx></c>
+      <c>The <spanx style="verb">(i,j)</spanx> advice entry is equal to the <spanx style="verb">k</spanx> instance entry for all <spanx style="verb">((i,j),k) in S</spanx>.</c>
+      <c><spanx style="verb">(i,j) ≡ (k,l) =&gt; w[i, j] = w[k, l]</spanx></c>
+      <c><spanx style="verb">≡</spanx> is an equivalence relation indicating which witness entries are constrained to be equal.</c>
+</texttable>
+
+<t>By convention, when fixed abstract cells have the same value, we consider them to be equivalent under <spanx style="verb">≡</spanx>. That is, if <spanx style="verb">i &lt; m_f &amp;&amp; k &lt; m_f &amp;&amp; f[i, j] = f[k, l]</spanx> then <spanx style="verb">(i, j) ≡ (k, l)</spanx>.</t>
+
+<t>This has no direct effect on the relation, but it will simplify expressing an optimization.</t>
+
+</section>
+<section anchor="custom-constraints"><name>Custom constraints</name>
+
+<t>Plonkish also allows custom constraints between the witness matrix entries. In the abstract model we are defining, a custom constraint applies only within a single row of the witness matrix, for the rows that are selected for that constraint.</t>
+
+<t>In some systems using Plonkish, custom constraints are referred to as "gates".</t>
+
+<t>Custom constraints enforce that witness entries within a row satisfy some multivariate polynomial. Here <spanx style="verb">p_u</spanx> could indicate any case that can be generated using a combination of multiplications and additions.</t>
+
+<texttable>
+      <ttcol align='left'>Custom Constraints</ttcol>
+      <ttcol align='left'>Description</ttcol>
+      <c><spanx style="verb">j in CUS_u =&gt; p_u(w_j) = 0</spanx></c>
+      <c><spanx style="verb">u</spanx> is the index of a custom constraint. <spanx style="verb">j</spanx> ranges over the set of rows <spanx style="verb">CUS_u</spanx> for which the custom constraint is switched on.</c>
+</texttable>
+
+<t>Here <spanx style="verb">p_u : Fp^m -&gt; Fp</spanx> is an arbitrary <eref target="https://en.wikipedia.org/wiki/Polynomial_ring#Definition_(multivariate_case)">multivariate polynomial</eref>:</t>
+
+<ul empty="true"><li>
+  <t>Given <spanx style="verb">η</spanx> symbols <spanx style="verb">X_0, ..., X_{η−1}</spanx> called indeterminates, a multivariate polynomial <spanx style="verb">P</spanx> in these indeterminates with coefficients in <spanx style="verb">Fp</spanx> is a finite linear combination:</t>
+
+  <t><spanx style="verb">P(X_0, ..., X_{η−1}) = Σ_{z=0}^{ν−1} (c_z · Π_{b=0}^{η−1} X_b^{α_{z,b}})</spanx></t>
+
+  <t>where  <spanx style="verb">c_z in Fp</spanx>, <spanx style="verb">c_z neq 0</spanx>, and <spanx style="verb">ν</spanx> and <spanx style="verb">α_{z,b}</spanx> are positive integers.</t>
+</li></ul>
+
+</section>
+<section anchor="lookup-constraints"><name>Lookup constraints</name>
+
+<t>Lookup constraints enforce that some polynomial function of the witness entries on a row are contained in some table.</t>
+
+<t>The sizes of tables are not limited at this layer. A realization of a proving system using Plonkish arithmetization may limit the supported size of tables, possibly depending on <spanx style="verb">n</spanx>, or it may have some way to compile larger tables.</t>
+
+<t>In this specification, we only support fixed lookup tables determined in advance. This could be generalized to support dynamic tables determined by part of the witness matrix.</t>
+
+<texttable>
+      <ttcol align='left'>Lookup Constraints</ttcol>
+      <ttcol align='left'>Description</ttcol>
+      <c><spanx style="verb">j in LOOK_v =&gt; [ q_{v,s}(w_j) : s &lt;- 0 .. L_v ] in TAB_v</spanx></c>
+      <c><spanx style="verb">v</spanx> is the index of a lookup table. <spanx style="verb">j</spanx> ranges over the set of rows <spanx style="verb">LOOK_v</spanx> for which the lookup constraint is switched on.</c>
+</texttable>
+
+<t>Here <spanx style="verb">q_{v,s} : Fp^m -&gt; Fp</spanx> for <spanx style="verb">s &lt;- 0 .. L_v</spanx> are multivariate polynomials that collectively map the witness entries <spanx style="verb">w_j</spanx> on the lookup row <spanx style="verb">j in LOOK_v</spanx> to a tuple of field elements. This tuple will be constrained to match some row of the table <spanx style="verb">TAB_v</spanx>.</t>
+
+</section>
+</section>
+</section>
+<section anchor="iana-considerations"><name>IANA Considerations</name>
+
+<t>This document has no actions for IANA.</t>
+
+</section>
+<section anchor="acknowledgements"><name>Acknowledgements</name>
+
+<t>Firstname Lastname, Firstname Lastname.</t>
+
+</section>
+<section anchor="informative-references"><name>Informative References</name>
+
+<t><list style="symbols">
+  <t>{#Thomas22} Morgan Thomas. <em>Arithmetization of Sigma-1^1 relations in Halo 2</em>. IACR ePrint Archive, 2022. https://eprint.iacr.org/2022/777</t>
+  <t>{#ZKProofCommunityReference} <em>ZKProof Community Reference</em> https://docs.zkproof.org/reference.</t>
+  <t>{#MultivariatePolynomial} <em>Polynomial ring – Definition (multivariate case)</em> https://en.wikipedia.org/wiki/Polynomial_ring#Definition_(multivariate_case)</t>
+</list></t>
+</section>
