@@ -1,23 +1,43 @@
-<!--
-Title: Specification of the Plonkish Relation
-Abbrev: PlonkishSpec
-Docname: draft-name-plonkish-00
-Category: info
-IPR: trust200902
-Area: sec
-WG: zkproof
-Date: 2025-05-12
+---
+stand_alone: true
+ipr: trust200902
+submissiontype: IETF
 
-Author: Firstname Lastname <email@example.com>
-        Organisation
-        https://example.com
--->
+cat: info
+title: Specification of the Plonkish Relation
+author:
+- name: Firstname (Insert-Author-Name-here;-bug-707)
+  org: (Insert Author affiliation here)
 
-# Abstract
+informative:
+  Thomas22:
+    title: "Arithmetization of Sigma relations in Halo 2"
+    author:
+      - ins: M. Thomas
+        name: Morgan Thomas
+    date: 2022
+    seriesinfo:
+      IACR: ePrint Archive 2022/777
+    target: https://eprint.iacr.org/2022/777
+    format:
+      HTML: https://eprint.iacr.org/2022/777
+
+  ZKProofCommunityReference:
+    title: "ZKProof Community Reference"
+    author:
+      - org: ZKProof Community
+    date: 2023
+    target: https://docs.zkproof.org/reference
+    format:
+      HTML: https://docs.zkproof.org/reference
+      
+--- abstract
 
 An arithmetisation is a language that a proof system uses to express statements. A circuit is a program in this language. The associated computation has been computed correctly if and only if all of the constraints in the circuit are satisified.
 
 The primary purpose of this document is to specify a particular arithmetisation: the "Plonkish" arithmetisation used in the Halo 2 proving system.
+
+--- middle
 
 # Introduction
 
@@ -39,7 +59,7 @@ The length of a sequence `S`, or the number of elements in a set `S`, is written
 
 When `f` is a function that takes a tuple as argument, we will allow `f((i, j))` to be written as `f[i, j]`.
 
-The terminology used here is intended to be consistent with the ZKProof Community Reference {{ZKProofCommunityReference}}. We diverge from this terminology as follows:
+The terminology used here is intended to be consistent with {{ZKProofCommunityReference}}. We diverge from this terminology as follows:
 * We refer to the public inputs to the circuit as an "instance vector". The entries of this vector are called "instance variables" in the Community Reference.
 
 # The General Plonkish Relation `R_plonkish`
@@ -57,6 +77,7 @@ If the proof system is knowledge sound, then the prover must have knowledge of t
 
 ## Instances
 The relation `R_plonkish` takes instances of the following form:
+
 | Instance element | Description                                                                               |
 | ---------------- | ----------------------------------------------------------------------------------------- |
 | `Fp`               | A prime field.                                                                            |
@@ -64,6 +85,7 @@ The relation `R_plonkish` takes instances of the following form:
 | `phi`              | The instance vector `phi : Fp^(C.t)` (where `t` is the instance vector length defined below). |
 
 The circuit `C : AbstractCircuit_Fp` in turn has the following form:
+
 | Circuit element | Description                                                                                                        | Used in                                   |
 | --------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
 | `t`               | Length of the instance vector.                                                                                     |                                           |
@@ -79,6 +101,7 @@ The circuit `C : AbstractCircuit_Fp` in turn has the following form:
 | `TAB_v`          | Lookup tables `TAB_v ⊆ Fp^{L_v}`, each with a number of tuples in `Fp^{L_v}`.                                           | [Lookup constraints](#lookup-constraints) |
 | `q_{v,s}`        | Scaling multivariate polynomials `q_{v,s} : Fp^m -> Fp` for `s in 0..L_v`.                                           | [Lookup constraints](#lookup-constraints) |
 | `LOOK_v`         | Sets `LOOK_v ⊆ [0,n)`, indicating rows on which the scaling polynomials `q_{v,s}` evaluate to some tuple in `TAB_v`. | [Lookup constraints](#lookup-constraints) |
+
 
 ## Witnesses
 
@@ -113,18 +136,17 @@ such that:
 | `≡ ⊆ ([0, m) x [0, n)) x ([0, m) × [0, n))`                                            | `(i, j) ≡ (k, l) => w[i, j] = w[k, l]`|
 | `CUS_u ⊆ [0, n)`, `p_u : Fp^m -> Fp`                                                        | `j in CUS_u => p_u(w_j) = 0`|
 | `LOOK_v ⊆ [0, n)`, `q_{v,s} : Fp^m -> Fp`, `TAB_v ⊆ Fp^{L_v}`                              | `j in LOOK_v => [ q_{v,s}(w_j) : s <- 0..L_v ] in TAB_v`|
----
 
 In this model, a circuit-specific relation `R_{Fp, C}` for a field `Fp` and circuit `C` is the relation `R_plonkish` restricted to `( (Fp, C, phi : Fp^C.t), w : Fp^(C.m × C.n))`
 
 ## Conditions satisfied by statements in `R_plonkish`
 
 There are four types of constraints that a Plonkish statement `(x, w) in R_plonkish` must satisfy:
-
 * Fixed constraints
 * Copy constraints
 * Custom constraints
 * Lookup constraints
+
 
 ### Fixed constraints
 
@@ -181,14 +203,12 @@ Here `q_{v,s} : Fp^m -> Fp` for `s <- 0 .. L_v` are multivariate polynomials tha
 
 This document has no actions for IANA.
 
+--- back
+
 # Acknowledgements
 
 Firstname Lastname, Firstname Lastname.
 
-# Informative References
 
-* {#Thomas22} Morgan Thomas. *Arithmetization of Sigma-1^1 relations in Halo 2*. IACR ePrint Archive, 2022. https://eprint.iacr.org/2022/777
 
-* {#ZKProofCommunityReference} *ZKProof Community Reference* https://docs.zkproof.org/reference.
 
-* {#MultivariatePolynomial} *Polynomial ring – Definition (multivariate case)* https://en.wikipedia.org/wiki/Polynomial_ring#Definition_(multivariate_case)
